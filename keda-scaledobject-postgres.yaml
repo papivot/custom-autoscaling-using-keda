@@ -28,7 +28,7 @@ spec:
         port: "5432"
         dbName: mypgdb
         sslmode: require
-        query: "SELECT COUNT(*) FROM cities;"
+        query: "SELECT COUNT(*) FROM user;"
         targetQueryValue: "1"
       authenticationRef:
         name: keda-vmsvc-auth
