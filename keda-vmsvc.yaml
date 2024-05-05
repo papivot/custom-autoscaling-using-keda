@@ -1,0 +1,161 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keda-vmsvc-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: keda-vmsvc-role
+rules:
+  - apiGroups:
+    - ""
+    resources:
+    - 'services'
+    verbs: ["get","list","watch","create","delete","patch","update"]
+  - apiGroups:
+    - "vmoperator.vmware.com"
+    resources:
+    - 'virtualmachines'
+    - 'virtualmachineservices'
+    verbs: ["get","list","watch","create","update","patch","delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: keda-vmsvc-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: keda-vmsvc-role
+subjects:
+- kind: ServiceAccount
+  name: keda-vmsvc-sa
+  namespace: demo1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: deployment-manifest
+data:
+  vmsvc.yaml: |
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: jumpbox-${tempvar}-pvc
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: vc01cl01-t0compute
+      volumeMode: Filesystem
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+        name: jumpbox-${tempvar}-configmap
+    data:
+      hostname: vmware-${tempvar}-jumpbox
+      public-keys: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC5KYNeWQgVHrDHaEhBCLF1vIR0OAtUIJwjKYkY4E/5HhEu8fPFvBOIHPFTPrtkX4vzSiMFKE5WheKGQIpW3HHlRbmRPc9oe6nNKlsUfFAaJ7OKF146Gjpb7lWs/C34mjdtxSb1D/YcHSyqK5mxhyHAXPeK8lrxG5MLOJ3X2A3iUvXcBo1NdhRdLRWQmyjs16fnPx6840x9n5NqeiukFYIVhDMFErq42AkeewsWcbZQuwViSLk2cIc09eykAjaXMojCmSbjrj0kC3sbYX+HD2OWbKohTqqO6/UABtjYgTjIS4PqsXWk63dFdcxF6ukuO6ZHaiY7h3xX2rTg9pv1oT8WBR44TYgvyRp0Bhe0u2/n/PUTRfp22cOWTA2wG955g7jOd7RVGhtMHi9gFXeUS2KodO6C4XEXC7Y2qp9p9ARlNvu11QoaDyH3l0h57Me9we+3XQNuteV69TYrJnlgWecMa/x+rcaEkgr7LD61dY9sTuufttLBP2ro4EIWoBY6F1Ozvcp8lcgi/55uUGxwiKDA6gQ+UA/xtrKk60s6MvYMzOxJiUQbWYr3MJ3NSz6PJVXMvlsAac6U+vX4U9eJP6/C1YDyBaiT96cb/B9TkvpLrhPwqMZdYVomVHsdY7YriJB93MRinKaDJor1aIE/HMsMpbgFCNA7mma9x5HS/57Imw== admin@corp.local
+      # Append value of vm-cloudinit.txt|base64
+      user-data: I2Nsb3VkLWNvbmZpZwoKcGFja2FnZV91cGRhdGU6IHRydWUKcGFja2FnZV91cGdyYWRlOiB0cnVlCgpzc2g6CiAgZW1pdF9rZXlzX3RvX2NvbnNvbGU6IGZhbHNlCgpub19zc2hfZmluZ2VycHJpbnRzOiB0cnVlCgpncm91cHM6CiAgLSBkb2NrZXIKCnN5c3RlbV9pbmZvOgogIGRlZmF1bHRfdXNlcjoKICAgIGdyb3VwczogW2RvY2tlcl0KCnNzaF9wd2F1dGg6IHRydWUKdXNlcnM6CiAgLSBuYW1lOiB2bXdhcmUtc3lzdGVtLXVzZXIKICAgIHN1ZG86IEFMTD0oQUxMKSBOT1BBU1NXRDpBTEwKICAgIGxvY2tfcGFzc3dkOiBmYWxzZQogICAgIyBQYXNzd29yZCBzZXQgdG8gQWRtaW4hMjMKICAgIHBhc3N3ZDogJyQ2JDhqTFl1STV1TGdwdUVWRmMkdUZsUEJtRk9Wb2RmV2I1OVZKSElTd0puY2JDV2p5ZVdkSVBhSExIZlRaaVFva1lIZnhPQlV3d1NqbEVxQUxic05UT1J2RjJRTTNZZUk2dlVDbU9pZi8nCiAgICBzaGVsbDogL2Jpbi9iYXNoCgp3cml0ZV9maWxlczoKICAtIHBhdGg6IC9ldGMvc3lzdGVtZC9zeXN0ZW0vdHR5ZC5zZXJ2aWNlCiAgICBjb250ZW50OiB8CiAgICAgIFtVbml0XQogICAgICBEZXNjcmlwdGlvbj1UVFlECiAgICAgIEFmdGVyPXN5c2xvZy50YXJnZXQKICAgICAgQWZ0ZXI9bmV0d29yay50YXJnZXQKICAgICAgW1NlcnZpY2VdCiAgICAgIEV4ZWNTdGFydD0vdXNyL2xvY2FsL2Jpbi90dHlkIC0tc3NsIC0tc3NsLWNlcnQgL2V0Yy90dHlkL2NlcnRzL3NlcnZlci5jcnQgLS1zc2wta2V5IC9ldGMvdHR5ZC9jZXJ0cy9zZXJ2ZXIua2V5IC0tc3NsLWNhIC9ldGMvdHR5ZC9jZXJ0cy9jYS5jcnQgLVcgbG9naW4KICAgICAgVHlwZT1zaW1wbGUKICAgICAgUmVzdGFydD1hbHdheXMKICAgICAgVXNlcj1yb290CiAgICAgIEdyb3VwPXJvb3QKICAgICAgW0luc3RhbGxdCiAgICAgIFdhbnRlZEJ5PW11bHRpLXVzZXIudGFyZ2V0CiAgICBvd25lcjogJ3Jvb3Q6cm9vdCcKICAgIHBlcm1pc3Npb25zOiAnMDY0NCcKICAtIHBhdGg6IC90bXAvc2FuLnR4dAogICAgY29udGVudDogfAogICAgICBzdWJqZWN0QWx0TmFtZT1ETlM6bG9jYWxob3N0CiAgICBvd25lcjogJ3Jvb3Q6cm9vdCcKICAgIHBlcm1pc3Npb25zOiAnMDY0NCcgICAgCgphcHQ6CiAgc291cmNlczoKICAgIGRvY2tlci5saXN0OgogICAgICBzb3VyY2U6IGRlYiBbYXJjaD1hbWQ2NF0gaHR0cHM6Ly9kb3dubG9hZC5kb2NrZXIuY29tL2xpbnV4L3VidW50dSBmb2NhbCBzdGFibGUKICAgICAga2V5aWQ6IDlEQzg1ODIyOUZDN0REMzg4NTRBRTJEODhEODE4MDNDMEVCRkNEODgKCnBhY2thZ2VzOgogIC0gYXB0LXRyYW5zcG9ydC1odHRwcwogIC0gY2EtY2VydGlmaWNhdGVzCiAgLSBjdXJsCiAgLSBnbnVwZwogIC0gbHNiLXJlbGVhc2UKICAtIHdnZXQKICAtIGRvY2tlci1jZQogIC0gZG9ja2VyLWNlLWNsaQogIC0gY29udGFpbmVyZC5pbwogIC0gbmV0LXRvb2xzCiAgLSBpbmV0dXRpbHMtdHJhY2Vyb3V0ZQogIC0gemlwCiAgLSBqcQogIC0genNoCiAgLSBiYXNoLWNvbXBsZXRpb24KCmRpc2tfc2V0dXA6CiAgL2Rldi9zZGI6CiAgICB0YWJsZV90eXBlOiBncHQKICAgIGxheW91dDogVHJ1ZQogICAgb3ZlcndyaXRlOiBUcnVlCgpmc19zZXR1cDoKICAtIGRldmljZTogL2Rldi9zZGIKICAgIGZpbGVzeXN0ZW06IGV4dDQKICAgIHBhcnRpdGlvbjogMQoKbW91bnRzOgogIC0gWyAvZGV2L3NkYjEsIC9kYXRhLCAiYXV0byIsICJkZWZhdWx0cyxub2V4ZWMsbm9mYWlsIiBdCgpydW5jbWQ6CiAgLSBjdXJsIC1rcyBodHRwczovLzEwLjIyMC44LjIvd2NwL3BsdWdpbi9saW51eC1hbWQ2NC92c3BoZXJlLXBsdWdpbi56aXAgLW8gL3RtcC92c3BoZXJlLXBsdWdpbi56aXAKICAtIHVuemlwIC1xbiAvdG1wL3ZzcGhlcmUtcGx1Z2luLnppcCAtZCAvdG1wCiAgLSBpbnN0YWxsIC90bXAvYmluL2t1YmVjdGwtdnNwaGVyZSAvdXNyL2xvY2FsL2JpbgogIC0gd2dldCBodHRwczovL2RsLms4cy5pby9yZWxlYXNlL3YxLjMwLjAvYmluL2xpbnV4L2FtZDY0L2t1YmVjdGwgLU8gL3RtcC9rdWJlY3RsCiAgLSBpbnN0YWxsIC90bXAva3ViZWN0bCAvdXNyL2xvY2FsL2JpbgogIC0gd2dldCBodHRwczovL2dpdGh1Yi5jb20vdHNsMDkyMi90dHlkL3JlbGVhc2VzL2Rvd25sb2FkLzEuNy43L3R0eWQueDg2XzY0IC1PIC90bXAvdHR5ZAogIC0gaW5zdGFsbCAvdG1wL3R0eWQgL3Vzci9sb2NhbC9iaW4KICAtIG1rZGlyIC1wIC9ldGMvdHR5ZC9jZXJ0cwogIC0gb3BlbnNzbCBnZW5yc2EgLW91dCAvZXRjL3R0eWQvY2VydHMvY2Eua2V5IDIwNDgKICAtIG9wZW5zc2wgcmVxIC1uZXcgLXg1MDkgLWRheXMgMzY1IC1rZXkgL2V0Yy90dHlkL2NlcnRzL2NhLmtleSAtc3ViaiAiL0M9VVMvU1Q9Q0EvTD1TRi9PPVZNd2FyZS9DTj1UVFlEIFJvb3QgQ0EiIC1vdXQgL2V0Yy90dHlkL2NlcnRzL2NhLmNydAogIC0gb3BlbnNzbCByZXEgLW5ld2tleSByc2E6MjA0OCAtbm9kZXMgLWtleW91dCAvZXRjL3R0eWQvY2VydHMvc2VydmVyLmtleSAtc3ViaiAiL0M9VVMvU1Q9Q0EvTD1TRi9PPVZNd2FyZS9DTj1sb2NhbGhvc3QiIC1vdXQgL2V0Yy90dHlkL2NlcnRzL3NlcnZlci5jc3IKICAtIG9wZW5zc2wgeDUwOSAtc2hhMjU2IC1yZXEgLWV4dGZpbGUgL3RtcC9zYW4udHh0IC1kYXlzIDM2NSAtaW4gL2V0Yy90dHlkL2NlcnRzL3NlcnZlci5jc3IgLUNBIC9ldGMvdHR5ZC9jZXJ0cy9jYS5jcnQgLUNBa2V5IC9ldGMvdHR5ZC9jZXJ0cy9jYS5rZXkgLUNBY3JlYXRlc2VyaWFsIC1vdXQgL2V0Yy90dHlkL2NlcnRzL3NlcnZlci5jcnQKICAtIHN5c3RlbWN0bCBzdGFydCB0dHlkICYmIHN1ZG8gc3lzdGVtY3RsIGVuYWJsZSB0dHlkCg==
+    ---
+    apiVersion: vmoperator.vmware.com/v1alpha1
+    kind: VirtualMachine
+    metadata:
+      labels:
+        vm-selector: vmware-${tempvar}-jumpbox
+      name: vmware-${tempvar}-jumpbox
+    spec:
+      imageName: vmi-796823e8da5f51cdf
+      className: best-effort-xsmall
+      powerState: poweredOn
+      storageClass: vc01cl01-t0compute
+      advancedOptions:
+        defaultVolumeProvisioningOptions:
+          thinProvisioned: true
+      volumes:
+      - name: jumpbox-vol
+        persistentVolumeClaim:
+          claimName: jumpbox-${tempvar}-pvc
+      networkInterfaces:
+      - networkType: nsx-t
+    #    networkName: k8s-workload
+      readinessProbe:
+        tcpSocket:
+          port: 22
+      vmMetadata:
+        configMapName: jumpbox-${tempvar}-configmap
+        transport: CloudInit
+    ---
+    apiVersion: vmoperator.vmware.com/v1alpha1
+    kind: VirtualMachineService
+    metadata:
+      name: vmware-${tempvar}-jumpbox
+    spec:
+      ports:
+      - name: ssh
+        port: 22
+        protocol: TCP
+        targetPort: 22
+      - name: https
+        port: 443
+        protocol: TCP
+        targetPort: 7681
+      selector:
+        vm-selector: vmware-${tempvar}-jumpbox
+      type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-vmsvc-deployment
+spec:
+  selector:
+    matchLabels:
+      app: keda-vmsvc
+  replicas: 0
+  template:
+    metadata:
+      labels:
+        app: keda-vmsvc
+    spec:
+      containers:
+      - name: keda-vmsvc
+        env:
+        - name: TINI_SUBREAPER
+        image: harbor.navneet.pro/library/kedavmsvc:0.0.7
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh","-c","/sbin/prep-deploy.sh"]
+          preStop:
+            exec:
+              command: ["/bin/sh","-c","/sbin/prep-delete.sh"]
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          privileged: false
+          runAsNonRoot: true
+          runAsUser: 9999
+        volumeMounts:
+        - name: install-files
+          mountPath: /host-install-files
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+      nodeSelector:
+        kubernetes.io/os: CRX
+      serviceAccount: keda-vmsvc-sa
+      serviceAccountName: keda-vmsvc-sa
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: install-files
+        configMap:
+          name: deployment-manifest

@@ -1,0 +1,16 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: keda-vmsvc-scaledobject-cron
+spec:
+  scaleTargetRef:
+    name: keda-vmsvc-deployment
+  cooldownPeriod: 30
+  minReplicaCount: 0
+  triggers:
+  - metadata:
+      desiredReplicas: "5"
+      start: 0 8 * * *
+      end: 0 17 * * *
+      timezone: America/New_York
+    type: cron
