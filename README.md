@@ -1,4 +1,19 @@
-# Custom Autoscaling using Keda
+# Custom Autoscaling Kubernetes Resources using Keda
+---
+1. Modify the `keda-vmsvc.yaml` as per the following - 
+ - Change the ConfigMap to add your custom resources that need to be scaled. 
+ - For resources that need unique naming, you can use the `${tempvar}` variable. This variable is substituted by the last 5 characters of the pod that will be responsible for scaling the resource. 
+ - Modify the Role to allow the ServiceAccount to perform CRUD operation on these resources.
+
+2. Deploy the `keda-vmsvc.yaml` in your namespace. The deployment started with `replicas: 0`. 
+
+3. Deploy your KEDA scaledobject in the namespace. Two examples are provided - one that scales based on a CRON trigger and another that is based on a Postgres trigger. 
+
+4. Notice the scale out and scale in operations based on Keda triggers. 
+
+---
+
+### 1. Deploy the pods that will be responsbile for triggering the scaling
 
 ```bash
 $ kubectl apply -f keda-vmsvc.yaml -n demo1
@@ -15,6 +30,8 @@ NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
 keda-vmsvc-deployment   0/0     0            0           17s
 ```
 
+### 2. Deploy the KEDA ScaledObject
+
 ```bash
 $ kubectl apply -f keda-scaledobject-cron.yaml -n demo1
 scaledobject.keda.sh/keda-vmsvc-scaledobject-cron created
@@ -25,6 +42,8 @@ $ kubectl get scaledobject.keda.sh  -n demo1
 NAME                           SCALETARGETKIND      SCALETARGETNAME         MIN   MAX   TRIGGERS   AUTHENTICATION   READY   ACTIVE   FALLBACK   PAUSED    AGE
 keda-vmsvc-scaledobject-cron   apps/v1.Deployment   keda-vmsvc-deployment   0           cron                        True    True     Unknown    Unknown   8s
 ```
+
+### 3. Observe the scaling that is triggered by the pods replicas that were deployed in Step 1.  
 
 ```bash
 $ kubectl pods -n demo1
