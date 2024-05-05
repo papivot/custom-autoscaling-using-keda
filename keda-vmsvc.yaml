@@ -12,6 +12,8 @@ rules:
     - ""
     resources:
     - 'services'
+    - 'configmaps'
+    - 'persistentvolumeclaims'
     verbs: ["get","list","watch","create","delete","patch","update"]
   - apiGroups:
     - "vmoperator.vmware.com"
